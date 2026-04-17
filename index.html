@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>盈虧追蹤器</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root{--bg:#0a0c10;--surface:#111318;--card:#161b24;--border:#1e2535;--green:#00e5a0;--red:#ff4d6a;--gold:#f5c842;--goldDim:#c8a02a;--muted:#4a5568;--text:#e2e8f0;--subtext:#718096}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;min-height:100vh}
+    .wrap{max-width:720px;margin:0 auto;padding:24px 16px 56px}.head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+    .title{font-size:28px;font-weight:800;line-height:1.05;letter-spacing:-.5px;font-family:Arial,Helvetica,sans-serif}.sub{font-size:12px;color:var(--subtext);margin-top:4px}
+    .total{text-align:right}.total .n{font-size:34px;font-weight:900;line-height:1;font-family:Arial,Helvetica,sans-serif}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-top:14px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+    .pill{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 8px;text-align:center}.pill .v{font-size:16px;font-weight:700}.pill .l{font-size:11px;color:var(--subtext);margin-top:4px}
+    .tabs{display:flex;gap:8px;margin-top:14px} button{border:none;cursor:pointer;border-radius:10px;padding:10px 14px;font-family:inherit}
+    .tab-btn{background:var(--card);color:var(--subtext);border:1px solid var(--border);font-weight:700}.tab-btn.active{background:var(--green);color:#000;border-color:var(--green)}
+    .legend{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.legend-item{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:999px;padding:5px 11px;font-size:11px;color:var(--subtext);background:var(--card)}
+    .linechip{width:18px;height:0;border-top:2px solid}.linechip.dashed{border-top-style:dashed}.chartbox{height:280px}
+    .bars{display:flex;align-items:flex-end;gap:4px;height:76px;margin-top:8px}.barcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}.bar{width:100%;border-radius:4px;opacity:.9}.barlab{font-size:9px;color:var(--subtext);white-space:nowrap;overflow:hidden;max-width:100%}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.field label{display:block;font-size:11px;color:var(--subtext);margin-bottom:6px}
+    .field input{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 12px;font-size:13px;outline:none;font-family:inherit}
+    .actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.primary{background:var(--green);color:#000;font-weight:800;flex:1}.secondary{background:var(--surface);color:var(--subtext);border:1px solid var(--border)}
+    .rowhead,.row{display:grid;grid-template-columns:60px 1fr 90px 76px 96px;gap:8px;align-items:center}.rowhead{font-size:10px;color:var(--muted);padding:8px 12px;border-bottom:1px solid var(--border)} .row{padding:11px 12px;border-bottom:1px solid var(--border)} .row:last-child{border-bottom:none}
+    .note{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.amt{font-size:13px;font-weight:800;text-align:right}.gold{font-size:11px;text-align:right}.op{display:flex;justify-content:flex-end;gap:4px}
+    .iconbtn{background:none;padding:2px 4px;font-size:12px;color:var(--subtext)}.danger{color:var(--red)}.mutetext{color:var(--muted);font-size:12px}.hidden{display:none}.toolbar{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+    .toolbar button{background:var(--surface);color:var(--subtext);border:1px solid var(--border)} input[type=file]{display:none}
+    @media (max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:1fr}.rowhead,.row{grid-template-columns:52px 1fr 78px 64px 86px}.title{font-size:24px}.total .n{font-size:28px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <div><div class="title">盈虧追蹤器</div><div class="sub">P&amp;L × XAUUSD</div></div>
+      <div class="total"><div id="totalNum" class="n">+0</div><div class="sub">累計盈虧</div></div>
+    </div>
+    <div class="stats">
+      <div class="pill"><div id="statWin" class="v">0%</div><div class="l">勝率</div></div>
+      <div class="pill"><div id="statDays" class="v">0</div><div class="l">天數</div></div>
+      <div class="pill"><div id="statBest" class="v">+0</div><div class="l">最佳</div></div>
+      <div class="pill"><div id="statWorst" class="v">-0</div><div class="l">最差</div></div>
+    </div>
+    <div class="tabs">
+      <button id="tabChartBtn" class="tab-btn active">📈 趨勢圖</button>
+      <button id="tabLogBtn" class="tab-btn">📋 紀錄</button>
+    </div>
+    <div id="chartTab" class="card">
+      <div class="legend">
+        <div class="legend-item"><span id="pnlLegend" class="linechip"></span>累計 P&amp;L</div>
+        <div class="legend-item"><span class="linechip dashed" style="border-color:var(--gold)"></span>XAUUSD 金價</div>
+      </div>
+      <div class="chartbox"><canvas id="mainChart"></canvas></div>
+      <div class="card" style="margin-top:12px;padding:12px">
+        <div class="sub" style="margin-bottom:8px">每日盈虧</div>
+        <div id="dailyBars" class="bars"></div>
+      </div>
+    </div>
+    <div id="logTab" class="card hidden" style="padding:0">
+      <div class="rowhead"><span>日期</span><span>備註</span><span style="text-align:right">盈虧</span><span style="text-align:right">金價</span><span style="text-align:right">操作</span></div>
+      <div id="rows"></div>
+    </div>
+    <div class="card">
+      <div id="formTitle" class="sub" style="font-weight:800;margin-bottom:12px">＋ 新增紀錄</div>
+      <div class="grid3">
+        <div class="field"><label>日期</label><input id="dateInput" placeholder="04/16" /></div>
+        <div class="field"><label>盈虧金額</label><input id="amountInput" type="number" placeholder="+1200 / -500" /></div>
+        <div class="field"><label>XAUUSD 金價（選填）</label><input id="xauInput" type="number" placeholder="2345" /></div>
+      </div>
+      <div class="field" style="margin-top:8px"><label>備註（選填）</label><input id="noteInput" placeholder="例：開倉太急，停損執行" /></div>
+      <div class="actions">
+        <button id="saveBtn" class="primary">新增</button>
+        <button id="cancelEditBtn" class="secondary hidden">取消</button>
+      </div>
+      <div class="toolbar">
+        <button id="exportBtn">匯出備份</button>
+        <label for="importFile"><button type="button">匯入備份</button></label>
+        <input id="importFile" type="file" accept=".json" />
+        <button id="resetBtn">清空全部</button>
+      </div>
+      <div class="mutetext" style="margin-top:10px">資料會自動存在這台裝置的瀏覽器裡。</div>
+    </div>
+  </div>
+<script>
+const C={bg:"#0a0c10",surface:"#111318",card:"#161b24",border:"#1e2535",green:"#00e5a0",red:"#ff4d6a",gold:"#f5c842",goldDim:"#c8a02a",muted:"#4a5568",text:"#e2e8f0",subtext:"#718096"};
+const STORAGE_KEY="pnl_tracker_entries_v2";
+const SAMPLE=[{id:1,date:"04/01",amount:1200,xauusd:2232,note:""},{id:2,date:"04/02",amount:-450,xauusd:2218,note:""},{id:3,date:"04/03",amount:870,xauusd:2265,note:""},{id:4,date:"04/07",amount:-1100,xauusd:2298,note:""},{id:5,date:"04/08",amount:2300,xauusd:2340,note:""}];
+let entries=loadEntries(),editId=null,chart=null;
+const $=(id)=>document.getElementById(id);
+function fmt(val){if(val===null||val===undefined||isNaN(val)) return "—"; const abs=Math.abs(Number(val)); const sign=Number(val)>=0?"+":"-"; if(abs>=10000) return sign+(abs/1000).toFixed(1)+"k"; return sign+abs.toLocaleString();}
+function loadEntries(){try{const raw=localStorage.getItem(STORAGE_KEY); if(!raw) return [...SAMPLE]; const arr=JSON.parse(raw); return Array.isArray(arr)?arr:[...SAMPLE];}catch(e){return [...SAMPLE];}}
+function saveEntries(){localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));}
+function compute(){let cum=0; const chartData=entries.map(e=>{cum+=Number(e.amount)||0; return {date:e.date,amount:Number(e.amount)||0,cumulative:cum,xauusd:e.xauusd===null||e.xauusd===""||e.xauusd===undefined?null:Number(e.xauusd)}}); const total=entries.reduce((s,e)=>s+(Number(e.amount)||0),0); const wins=entries.filter(e=>Number(e.amount)>0).length; const best=entries.length?Math.max(...entries.map(e=>Number(e.amount)||0)):0; const worst=entries.length?Math.min(...entries.map(e=>Number(e.amount)||0)):0; return {chartData,stats:{total,winRate:entries.length?Math.round((wins/entries.length)*100):0,best,worst,days:entries.length}};}
+function renderStats(stats){$("totalNum").textContent=fmt(stats.total); $("totalNum").style.color=stats.total>=0?C.green:C.red; $("statWin").textContent=stats.winRate+"%"; $("statDays").textContent=stats.days; $("statBest").textContent=fmt(stats.best); $("statBest").style.color=C.green; $("statWorst").textContent=fmt(stats.worst); $("statWorst").style.color=C.red; $("pnlLegend").style.borderColor=stats.total>=0?C.green:C.red;}
+function renderRows(){const rows=$("rows"); if(!entries.length){rows.innerHTML='<div class="row"><div class="mutetext">—</div><div class="mutetext">尚無紀錄</div><div></div><div></div><div></div></div>'; return;} rows.innerHTML=entries.map((e,i)=>'<div class="row"><span style="font-size:11px;color:'+C.subtext+'">'+escapeHtml(e.date||"")+'</span><span class="note">'+escapeHtml(e.note||"—")+'</span><span class="amt" style="color:'+(Number(e.amount)>=0?C.green:C.red)+'">'+fmt(Number(e.amount)||0)+'</span><span class="gold" style="color:'+(e.xauusd?C.gold:C.muted)+'">'+(e.xauusd?"$"+Number(e.xauusd).toLocaleString():"—")+'</span><div class="op"><button class="iconbtn" onclick="moveEntry('+i+',-1)" '+(i===0?'disabled':'')+'>↑</button><button class="iconbtn" onclick="moveEntry('+i+',1)" '+(i===entries.length-1?'disabled':'')+'>↓</button><button class="iconbtn" onclick="startEdit('+e.id+')">✏️</button><button class="iconbtn danger" onclick="removeEntry('+e.id+')">✕</button></div></div>').join("");}
+function renderBars(chartData){const box=$("dailyBars"); if(!chartData.length){box.innerHTML='<div class="mutetext">尚無資料</div>'; return;} const max=Math.max(...chartData.map(x=>Math.abs(x.amount)),1); box.innerHTML=chartData.map(d=>{const h=Math.max((Math.abs(d.amount)/max)*58,4); return '<div class="barcol" title="'+escapeHtml(d.date)+': '+fmt(d.amount)+'"><div class="bar" style="height:'+h+'px;background:'+(d.amount>=0?C.green:C.red)+'"></div><div class="barlab">'+escapeHtml(d.date)+'</div></div>';}).join("");}
+function renderChart(chartData,total){const ctx=$("mainChart"); if(chart) chart.destroy(); const goldExists=chartData.some(d=>d.xauusd!==null&&!isNaN(d.xauusd)); chart=new Chart(ctx,{type:'line',data:{labels:chartData.map(d=>d.date),datasets:[{label:'累計 P&L',data:chartData.map(d=>d.cumulative),borderColor:total>=0?C.green:C.red,backgroundColor:hexToRgba(total>=0?C.green:C.red,0.16),fill:true,tension:0.35,pointRadius:3,pointHoverRadius:5,yAxisID:'y'},{label:'XAUUSD',data:chartData.map(d=>d.xauusd),borderColor:C.gold,backgroundColor:C.gold,tension:0.35,pointRadius:2,pointHoverRadius:4,spanGaps:true,borderDash:[6,4],yAxisID:'y1',hidden:!goldExists}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:C.card,borderColor:C.border,borderWidth:1,titleColor:C.subtext,bodyColor:C.text,displayColors:false,callbacks:{label:(ctx)=>{if(ctx.dataset.label==='累計 P&L') return '累計 P&L '+fmt(ctx.raw); if(ctx.dataset.label==='XAUUSD'&&ctx.raw!=null) return 'XAUUSD $'+Number(ctx.raw).toLocaleString(); return '';},afterBody:(items)=>{const i=items[0]?.dataIndex??0; const day=chartData[i]?.amount; return day!==undefined?'當日 '+fmt(day):'';}}}},scales:{x:{ticks:{color:C.subtext,font:{size:10}},grid:{display:false},border:{display:false}},y:{ticks:{color:C.subtext,callback:(v)=>fmt(v),font:{size:10}},grid:{color:C.border},border:{display:false}},y1:{position:'right',display:goldExists,ticks:{color:C.goldDim,callback:(v)=>'$'+v,font:{size:10}},grid:{drawOnChartArea:false},border:{display:false}}}}});}
+function render(){saveEntries(); const {chartData,stats}=compute(); renderStats(stats); renderRows(); renderBars(chartData); renderChart(chartData,stats.total);}
+function startEdit(id){const e=entries.find(x=>x.id===id); if(!e) return; editId=id; $("dateInput").value=e.date||""; $("amountInput").value=e.amount??""; $("xauInput").value=e.xauusd??""; $("noteInput").value=e.note||""; $("formTitle").textContent="✏️ 編輯紀錄"; $("saveBtn").textContent="儲存變更"; $("cancelEditBtn").classList.remove("hidden"); showTab("chart"); window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});}
+function clearForm(){editId=null; $("dateInput").value=""; $("amountInput").value=""; $("xauInput").value=""; $("noteInput").value=""; $("formTitle").textContent="＋ 新增紀錄"; $("saveBtn").textContent="新增"; $("cancelEditBtn").classList.add("hidden");}
+function removeEntry(id){entries=entries.filter(x=>x.id!==id); if(editId===id) clearForm(); render();}
+function moveEntry(index,dir){const ni=index+dir; if(ni<0||ni>=entries.length) return; const arr=[...entries]; [arr[index],arr[ni]]=[arr[ni],arr[index]]; entries=arr; render();}
+function submitForm(){const date=$("dateInput").value.trim(); const amount=parseFloat($("amountInput").value); const xauVal=$("xauInput").value.trim(); const note=$("noteInput").value.trim(); if(!date||Number.isNaN(amount)){alert("請至少輸入日期與盈虧金額"); return;} const xauusd=xauVal?parseFloat(xauVal):null; if(editId!==null){entries=entries.map(e=>e.id===editId?{...e,date,amount,xauusd,note}:e);} else {entries.push({id:Date.now(),date,amount,xauusd,note});} clearForm(); render();}
+function exportJSON(){const blob=new Blob([JSON.stringify(entries,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='pnl-tracker-backup.json'; a.click(); URL.revokeObjectURL(url);}
+function importJSON(file){const reader=new FileReader(); reader.onload=()=>{try{const arr=JSON.parse(reader.result); if(!Array.isArray(arr)) throw new Error(); entries=arr.map((e,i)=>({id:e.id??Date.now()+i,date:e.date??"",amount:Number(e.amount)||0,xauusd:e.xauusd===null||e.xauusd===""||e.xauusd===undefined?null:Number(e.xauusd),note:e.note??""})); clearForm(); render(); alert("匯入成功");}catch(err){alert("匯入失敗，檔案格式不正確");}}; reader.readAsText(file);}
+function showTab(name){const chartTab=$("chartTab"), logTab=$("logTab"), bc=$("tabChartBtn"), bl=$("tabLogBtn"); if(name==="chart"){chartTab.classList.remove("hidden"); logTab.classList.add("hidden"); bc.classList.add("active"); bl.classList.remove("active");} else {chartTab.classList.add("hidden"); logTab.classList.remove("hidden"); bc.classList.remove("active"); bl.classList.add("active");}}
+function escapeHtml(str){return String(str).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");}
+function hexToRgba(hex,alpha){const h=hex.replace('#',''); const bigint=parseInt(h,16); const r=(bigint>>16)&255; const g=(bigint>>8)&255; const b=bigint&255; return 'rgba('+r+','+g+','+b+','+alpha+')';}
+$("saveBtn").addEventListener("click", submitForm); $("cancelEditBtn").addEventListener("click", clearForm); $("exportBtn").addEventListener("click", exportJSON); $("resetBtn").addEventListener("click", ()=>{if(confirm("要清空全部紀錄嗎？")){entries=[]; clearForm(); render();}}); $("importFile").addEventListener("change",(e)=>{const file=e.target.files?.[0]; if(file) importJSON(file); e.target.value="";}); $("tabChartBtn").addEventListener("click",()=>showTab("chart")); $("tabLogBtn").addEventListener("click",()=>showTab("log"));
+window.startEdit=startEdit; window.removeEntry=removeEntry; window.moveEntry=moveEntry; render();
+</script>
+</body>
+</html>
